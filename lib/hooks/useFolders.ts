@@ -29,6 +29,19 @@ export function useFolders(parentId?: string | null) {
   });
 }
 
+export function useAllFolders(enabled = true) {
+  return useQuery<Folder[]>({
+    queryKey: ["folders", "all"],
+    queryFn: async () => {
+      const res = await fetch("/api/folders?all=true");
+      if (!res.ok) throw new Error("Failed to fetch folders");
+      return res.json();
+    },
+    staleTime: 60_000,
+    enabled,
+  });
+}
+
 export function useCreateFolder() {
   const qc = useQueryClient();
   return useMutation({

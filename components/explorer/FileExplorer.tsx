@@ -17,12 +17,12 @@ import {
   verticalListSortingStrategy,
   arrayMove,
 } from "@dnd-kit/sortable";
-import { Plus, ChevronRight, Home } from "lucide-react";
+import { Plus, ChevronRight, Home, FileText, Folder as FolderLucide, X } from "lucide-react";
 import { FolderItem } from "./FolderItem";
 import { NoteItem } from "./NoteItem";
 import { NewItemModal } from "./NewItemModal";
 import { PasswordModal } from "./PasswordModal";
-import { useFolders, useCreateFolder, useUpdateFolder, useDeleteFolder, type Folder } from "@/lib/hooks/useFolders";
+import { useFolders, useAllFolders, useCreateFolder, useUpdateFolder, useDeleteFolder, type Folder } from "@/lib/hooks/useFolders";
 import { useNotes, useCreateNote, useUpdateNote, useDeleteNote } from "@/lib/hooks/useNote";
 import { useKeyStore } from "@/lib/store/keyStore";
 import { encrypt, hashPassword, deriveSubKey, verifyPassword } from "@/lib/crypto";
@@ -46,6 +46,8 @@ export function FileExplorer({ initialFolderId = null }: FileExplorerProps) {
     { id: null, name: "Notes" },
   ]);
   const [newItemType, setNewItemType] = useState<"note" | "folder" | null>(null);
+  const [fabOpen, setFabOpen] = useState(false);
+  const [moveTargetId, setMoveTargetId] = useState<string | null>(null);
   const [passwordTarget, setPasswordTarget] = useState<{
     type: "folder" | "note";
     id: string;
@@ -56,6 +58,7 @@ export function FileExplorer({ initialFolderId = null }: FileExplorerProps) {
 
   const { data: folders = [], refetch: refetchFolders } = useFolders(currentFolderId);
   const { data: notes = [], refetch: refetchNotes } = useNotes(currentFolderId);
+  const { data: allFolders = [] } = useAllFolders(moveTargetId !== null);
 
   const createFolder = useCreateFolder();
   const updateFolder = useUpdateFolder();
@@ -321,7 +324,7 @@ export function FileExplorer({ initialFolderId = null }: FileExplorerProps) {
                       })
                     }
                     onManageTags={() => {}}
-                    onMove={() => {}}
+                    onMove={() => setMoveTargetId(note.id)}
                   />
                 ))}
             </SortableContext>
@@ -350,22 +353,85 @@ export function FileExplorer({ initialFolderId = null }: FileExplorerProps) {
         )}
       </div>
 
-      {/* FAB */}
-      <div className="fixed bottom-24 right-5 md:bottom-8 md:right-8 z-30">
+      {/* FAB speed dial */}
+      <div className="fixed bottom-24 right-5 md:bottom-8 md:right-8 z-30 flex flex-col items-end gap-3">
+        {fabOpen && (
+          <>
+            {/* Backdrop */}
+            <div
+              className="fixed inset-0 -z-10"
+              onClick={() => setFabOpen(false)}
+            />
+            {/* New Folder option */}
+            <div className="flex items-center gap-2.5 animate-fade-in">
+              <span
+                className="text-xs px-2.5 py-1 rounded-lg"
+                style={{
+                  background: "#161618",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  color: "#f0ede6",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.4)",
+                }}
+              >
+                New Folder
+              </span>
+              <button
+                onClick={() => { setFabOpen(false); setNewItemType("folder"); }}
+                className="w-11 h-11 rounded-full flex items-center justify-center shadow-md transition-transform active:scale-95"
+                style={{
+                  background: "#1e1e22",
+                  border: "1px solid rgba(201,168,76,0.3)",
+                }}
+                aria-label="New folder"
+              >
+                <FolderLucide size={17} style={{ color: "#c9a84c" }} />
+              </button>
+            </div>
+            {/* New Note option */}
+            <div className="flex items-center gap-2.5 animate-fade-in">
+              <span
+                className="text-xs px-2.5 py-1 rounded-lg"
+                style={{
+                  background: "#161618",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  color: "#f0ede6",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.4)",
+                }}
+              >
+                New Note
+              </span>
+              <button
+                onClick={() => { setFabOpen(false); setNewItemType("note"); }}
+                className="w-11 h-11 rounded-full flex items-center justify-center shadow-md transition-transform active:scale-95"
+                style={{
+                  background: "#1e1e22",
+                  border: "1px solid rgba(201,168,76,0.3)",
+                }}
+                aria-label="New note"
+              >
+                <FileText size={17} style={{ color: "#c9a84c" }} />
+              </button>
+            </div>
+          </>
+        )}
+        {/* Main FAB */}
         <button
-          onClick={() => setNewItemType("note")}
-          onContextMenu={(e) => {
-            e.preventDefault();
-            setNewItemType("folder");
-          }}
-          className="w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-transform active:scale-95"
+          onClick={() => setFabOpen((o) => !o)}
+          className="w-14 h-14 rounded-full flex items-center justify-center shadow-lg transition-all active:scale-95"
           style={{
             background: "#c9a84c",
             boxShadow: "0 4px 20px rgba(201,168,76,0.4)",
           }}
-          aria-label="New note"
+          aria-label="New item"
         >
-          <Plus size={22} style={{ color: "#0f0f10" }} />
+          <Plus
+            size={22}
+            style={{
+              color: "#0f0f10",
+              transform: fabOpen ? "rotate(45deg)" : "none",
+              transition: "transform 0.2s ease",
+            }}
+          />
         </button>
       </div>
 
@@ -412,6 +478,87 @@ export function FileExplorer({ initialFolderId = null }: FileExplorerProps) {
           }}
           onCancel={() => setPasswordTarget(null)}
         />
+      )}
+
+      {/* Move to folder modal */}
+      {moveTargetId && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+          style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }}
+        >
+          <div
+            className="w-full sm:max-w-[420px] rounded-t-2xl sm:rounded-2xl animate-slide-in-up"
+            style={{
+              background: "#161618",
+              border: "1px solid rgba(255,255,255,0.1)",
+              boxShadow: "0 16px 48px rgba(0,0,0,0.6)",
+              maxHeight: "70vh",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            <div className="flex items-center justify-between px-5 pt-5 pb-3 flex-shrink-0">
+              <h3
+                className="font-semibold text-base"
+                style={{
+                  fontFamily: "var(--font-fraunces), Georgia, serif",
+                  color: "#f0ede6",
+                }}
+              >
+                Move to…
+              </h3>
+              <button onClick={() => setMoveTargetId(null)} style={{ color: "#6b6862" }}>
+                <X size={18} />
+              </button>
+            </div>
+            <div className="overflow-y-auto px-3 pb-5">
+              {/* Root option */}
+              <button
+                onClick={() => {
+                  updateNote.mutate({ id: moveTargetId, folderId: null });
+                  setMoveTargetId(null);
+                  refetchNotes();
+                }}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all"
+                style={{ color: currentFolderId === null ? "#c9a84c" : "#f0ede6" }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+              >
+                <Home size={15} style={{ color: "#6b6862" }} />
+                <span>Root (no folder)</span>
+                {currentFolderId === null && (
+                  <span className="ml-auto text-xs" style={{ color: "#c9a84c" }}>current</span>
+                )}
+              </button>
+              {/* All folders */}
+              {allFolders.map((folder) => (
+                <button
+                  key={folder.id}
+                  onClick={() => {
+                    updateNote.mutate({ id: moveTargetId, folderId: folder.id });
+                    setMoveTargetId(null);
+                    refetchNotes();
+                  }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all"
+                  style={{ color: folder.id === currentFolderId ? "#c9a84c" : "#f0ede6" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                >
+                  <FolderLucide size={15} style={{ color: "#c9a84c", opacity: 0.7 }} />
+                  <span className="flex-1 text-left truncate">{folder.name}</span>
+                  {folder.id === currentFolderId && (
+                    <span className="ml-auto text-xs" style={{ color: "#c9a84c" }}>current</span>
+                  )}
+                </button>
+              ))}
+              {allFolders.length === 0 && (
+                <p className="text-xs px-3 py-4 text-center" style={{ color: "#6b6862" }}>
+                  No folders yet — create one first
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

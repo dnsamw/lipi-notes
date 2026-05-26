@@ -8,11 +8,12 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url);
   const parentId = searchParams.get("parentId");
+  const all = searchParams.get("all") === "true";
 
   const folders = await prisma.folder.findMany({
     where: {
       userId: session.user.id,
-      parentId: parentId ?? null,
+      ...(all ? {} : { parentId: parentId ?? null }),
     },
     orderBy: [{ order: "asc" }, { createdAt: "asc" }],
     select: {
