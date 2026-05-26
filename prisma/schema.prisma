@@ -1,0 +1,106 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  googleId     String   @unique
+  email        String   @unique
+  name         String
+  avatar       String?
+  createdAt    DateTime @default(now())
+  folders      Folder[]
+  notes        Note[]
+  driveEnabled Boolean  @default(false)
+  driveTokens  String?
+  tags         Tag[]
+}
+
+model Folder {
+  id           String   @id @default(cuid())
+  name         String
+  icon         String   @default("folder")
+  color        String   @default("default")
+  parentId     String?
+  parent       Folder?  @relation("FolderTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children     Folder[] @relation("FolderTree")
+  notes        Note[]
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hasPassword  Boolean  @default(false)
+  passwordHash String?
+  order        Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Note {
+  id           String        @id @default(cuid())
+  titleBlob    String
+  titleIv      String
+  contentBlob  String
+  contentIv    String
+  folderId     String?
+  folder       Folder?       @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  userId       String
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isNovel      Boolean       @default(false)
+  hasPassword  Boolean       @default(false)
+  passwordHash String?
+  language     String        @default("en")
+  wordCount    Int           @default(0)
+  order        Int           @default(0)
+  isTrashed    Boolean       @default(false)
+  trashedAt    DateTime?
+  driveFileId  String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  chapters     Chapter[]
+  versions     NoteVersion[]
+  tags         NoteTag[]
+}
+
+model Chapter {
+  id          String   @id @default(cuid())
+  noteId      String
+  note        Note     @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  title       String
+  contentBlob String
+  contentIv   String
+  order       Int
+  wordCount   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model NoteVersion {
+  id          String   @id @default(cuid())
+  noteId      String
+  note        Note     @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  contentBlob String
+  contentIv   String
+  createdAt   DateTime @default(now())
+}
+
+model Tag {
+  id     String    @id @default(cuid())
+  name   String
+  color  String    @default("amber")
+  userId String
+  user   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notes  NoteTag[]
+}
+
+model NoteTag {
+  noteId String
+  tagId  String
+  note   Note   @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([noteId, tagId])
+}
