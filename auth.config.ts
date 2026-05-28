@@ -1,28 +1,9 @@
 import type { NextAuthConfig } from "next-auth";
-import Google from "next-auth/providers/google";
 
+// Shared base config. Providers and callbacks are defined in auth.ts.
 export const authConfig: NextAuthConfig = {
-  providers: [
-    Google({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    }),
-  ],
+  providers: [],
   session: { strategy: "jwt" },
-  secret: process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET,
+  secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
   pages: { signIn: "/login" },
-  callbacks: {
-    authorized({ auth, request: { nextUrl } }) {
-      const isLoggedIn = !!auth?.user;
-      const { pathname } = nextUrl;
-      const isPublic =
-        pathname.startsWith("/login") ||
-        pathname.startsWith("/api/auth") ||
-        pathname === "/";
-      if (!isLoggedIn && !isPublic) {
-        return Response.redirect(new URL("/login", nextUrl));
-      }
-      return true;
-    },
-  },
 };
