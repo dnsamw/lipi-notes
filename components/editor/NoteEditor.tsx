@@ -17,7 +17,7 @@ import { ArrowLeft, Lock } from "lucide-react";
 
 import { EditorToolbar } from "./EditorToolbar";
 import { WordCount } from "./WordCount";
-import { useSinhalaIME, SinhalaHintBubble } from "./SinhalaIME";
+import { useSinhalaIME, useSinhalaIMEForInput, SinhalaHintBubble, SINHALA_INPUT_ATTRS, SINHALA_EDITOR_ATTRS } from "./SinhalaIME";
 import { VersionHistory } from "../ui/VersionHistory";
 import { PasswordModal } from "../explorer/PasswordModal";
 
@@ -54,6 +54,7 @@ export function NoteEditor({ noteId }: NoteEditorProps) {
   const saveTimer = useRef<NodeJS.Timeout | null>(null);
   const titleRef = useRef(title);
   titleRef.current = title;
+  const titleInputRef = useRef<HTMLInputElement>(null);
 
   const editor = useEditor({
     extensions: [
@@ -72,6 +73,7 @@ export function NoteEditor({ noteId }: NoteEditorProps) {
     editorProps: {
       attributes: {
         class: "ProseMirror",
+        ...SINHALA_EDITOR_ATTRS,
       },
     },
     onUpdate: ({ editor }) => {
@@ -82,6 +84,11 @@ export function NoteEditor({ noteId }: NoteEditorProps) {
   });
 
   const { bubble } = useSinhalaIME(editor, language === "si");
+  const { bubble: titleBubble } = useSinhalaIMEForInput(
+    titleInputRef,
+    language === "si",
+    (val) => handleTitleChange(val)
+  );
 
   // Load and decrypt note content
   useEffect(() => {
@@ -305,11 +312,13 @@ export function NoteEditor({ noteId }: NoteEditorProps) {
         >
           {/* Title */}
           <input
+            ref={titleInputRef}
             type="text"
             value={title}
             onChange={(e) => handleTitleChange(e.target.value)}
             placeholder="Untitled"
             className="w-full bg-transparent outline-none mb-6"
+            {...SINHALA_INPUT_ATTRS}
             style={{
               fontFamily: "var(--font-fraunces), Georgia, serif",
               fontSize: "clamp(1.75rem, 5vw, 2.5rem)",
@@ -335,8 +344,8 @@ export function NoteEditor({ noteId }: NoteEditorProps) {
         </div>
       )}
 
-      {/* Sinhala hint bubble */}
-      {language === "si" && <SinhalaHintBubble bubble={bubble} />}
+      {/* Sinhala hint bubble — title takes priority when focused */}
+      {language === "si" && <SinhalaHintBubble bubble={titleBubble ?? bubble} />}
 
       {/* Version history panel */}
       {showVersionHistory && (
