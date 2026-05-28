@@ -5,11 +5,16 @@ import { google } from "googleapis";
 
 const DRIVE_FOLDER_NAME = "LipiNotes";
 
+function getBaseUrl(): string {
+  const raw = process.env.AUTH_URL ?? process.env.NEXTAUTH_URL ?? "http://localhost:3000";
+  return raw.startsWith("http") ? raw : `https://${raw}`;
+}
+
 export function createOAuth2Client() {
   return new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID!,
     process.env.GOOGLE_CLIENT_SECRET!,
-    process.env.NEXTAUTH_URL + "/api/drive/connect"
+    `${getBaseUrl()}/api/drive/connect`
   );
 }
 
