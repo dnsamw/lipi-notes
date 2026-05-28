@@ -1,16 +1,16 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import { prisma } from "@/lib/prisma";
+import { authConfig } from "./auth.config";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  ...authConfig,
   providers: [
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
   ],
-  session: { strategy: "jwt" },
-  secret: process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET,
   callbacks: {
     async signIn({ account, profile }) {
       if (account?.provider === "google" && profile) {
@@ -37,7 +37,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           });
         } catch (err) {
           console.error("[auth] signIn DB upsert failed:", err);
-          // Return an error string so Auth.js shows a meaningful message
           return `/login?error=DatabaseError`;
         }
       }
@@ -68,9 +67,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
       return session;
     },
-  },
-  pages: {
-    signIn: "/login",
   },
 });
 
